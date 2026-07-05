@@ -1,9 +1,9 @@
 {
-  "name": "prosekit-extension-youtube",
+  "name": "prosekit-extension-format-painter",
   "type": "module",
   "version": "1.0.1",
   "packageManager": "pnpm@11.5.1",
-  "description": "A ProseKit extension for embedding YouTube videos",
+  "description": "A headless ProseKit extension for format painter interactions",
   "author": "ocavue <ocavue@gmail.com>",
   "license": "MIT",
   "funding": "https://github.com/sponsors/ocavue",
@@ -22,7 +22,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./style.css": "./src/style.css"
   },
   "files": [
     "dist",
@@ -47,11 +48,17 @@
     "@prosekit/basic": "^0.9.4",
     "@prosekit/extensions": "^0.17.3",
     "@types/node": "^22.19.11",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
     "@vitest/browser-playwright": "^4.1.8",
     "diffable-html-snapshot": "^0.2.0",
     "eslint": "^10.4.1",
+    "lucide-react": "^0.561.0",
     "playwright": "^1.60.0",
     "prettier": "^3.8.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "tsdown": "^0.22.1",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",

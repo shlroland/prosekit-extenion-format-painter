@@ -2,31 +2,17 @@
 @import '@prosekit/basic/typography.css';
 
 :root {
-  --bg: #f4f5f7;
-  --bg-accent: rgba(255, 0, 51, 0.06);
-  --fg: #16181d;
+  --background: #f7f7f5;
+  --foreground: #18181b;
   --muted: #6b7280;
-  --card: #ffffff;
-  --border: #e7e8ec;
-  --bar: #f2f3f5;
-  --accent: #ff0033;
-  --radius: 16px;
-  --shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px rgba(15, 23, 42, 0.08);
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0c0e12;
-    --bg-accent: rgba(255, 0, 51, 0.1);
-    --fg: #e8e9ec;
-    --muted: #9aa0a6;
-    --card: #16181d;
-    --border: #262a31;
-    --bar: #1c1f25;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.5);
-  }
+  --panel: #ffffff;
+  --panel-strong: #f1f5f9;
+  --border: #d7dde5;
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+  --ring: rgba(15, 118, 110, 0.22);
+  --format-painter-caret-color: #0f766e;
+  color-scheme: light;
 }
 
 * {
@@ -34,172 +20,188 @@
 }
 
 html,
-body {
+body,
+#app {
+  min-height: 100%;
   margin: 0;
-  padding: 0;
 }
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(60rem 40rem at 50% -10%, var(--bg-accent), transparent 70%),
-    var(--bg);
-  color: var(--fg);
+  background: var(--background);
+  color: var(--foreground);
   font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    Helvetica,
-    Arial,
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
-  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
   text-rendering: optimizelegibility;
-  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
-#app {
-  width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
-  padding: clamp(2.5rem, 6vw, 5rem) 1.25rem 4rem;
+button {
+  font: inherit;
 }
 
-.hero {
-  text-align: center;
-  margin-bottom: 2.25rem;
+.shell {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  min-height: calc(100vh - 48px);
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  border-right: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+
+.brand {
+  display: grid;
+  gap: 12px;
 }
 
 .eyebrow {
-  display: inline-block;
-  margin: 0 0 0.85rem;
-  padding: 0.3rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--card);
+  margin: 0 0 4px;
   color: var(--muted);
-  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
-  font-size: 0.78rem;
+  font-size: 12px;
+  font-weight: 500;
 }
 
-.title {
-  margin: 0 0 0.6rem;
-  font-size: clamp(1.9rem, 5vw, 2.7rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+h1 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.15;
 }
 
-.subtitle {
-  max-width: 34rem;
-  margin: 0 auto;
-  color: var(--muted);
-  font-size: 1.05rem;
-}
-
-.card {
-  background: var(--card);
+.status {
+  width: fit-content;
+  min-width: 64px;
+  padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.status-on {
+  border-color: rgba(15, 118, 110, 0.32);
+  background: rgba(15, 118, 110, 0.09);
+  color: var(--primary);
 }
 
 .toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.toolbar-painter {
+  grid-template-columns: 1fr 1fr;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.button {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--bar);
-}
-
-.dot {
-  width: 0.72rem;
-  height: 0.72rem;
-  border-radius: 50%;
-  background: #c9ccd1;
-}
-
-.dot.red {
-  background: #ff5f57;
-}
-
-.dot.yellow {
-  background: #febc2e;
-}
-
-.dot.green {
-  background: #28c840;
-}
-
-.label {
-  margin-left: 0.35rem;
-  color: var(--muted);
-  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, monospace;
-  font-size: 0.8rem;
-}
-
-#editor {
-  padding: clamp(1.25rem, 4vw, 2rem);
-  min-height: 18rem;
-  color: var(--fg);
-}
-
-#editor,
-#editor:focus,
-#editor:focus-visible,
-#editor :focus,
-#editor :focus-visible {
-  outline: none;
-  box-shadow: none;
-}
-
-#editor code {
-  padding: 0.15em 0.4em;
-  border-radius: 6px;
-  background: var(--bar);
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  font-size: 0.9em;
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--foreground);
+  cursor: pointer;
 }
 
-.ProseMirror iframe[data-prosekit-youtube] {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
-  margin: 1.5rem 0;
-  border: 0;
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  background: #000;
+.button:hover {
+  background: #eef2f7;
 }
 
-.ProseMirror iframe[data-prosekit-youtube].ProseMirror-selectednode {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+.button:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
 }
 
-.footer {
-  margin-top: 2rem;
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.9rem;
+.button-active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
-.footer a {
-  color: var(--muted);
-  text-decoration: none;
-  transition: color 0.15s ease;
+.editor-frame {
+  min-width: 0;
+  padding: 28px;
+  background: #fbfbfa;
 }
 
-.footer a:hover {
-  color: var(--accent);
+.editor-host {
+  min-height: 100%;
 }
 
-.sep {
-  margin: 0 0.5rem;
-  opacity: 0.5;
+.ProseMirror {
+  min-height: calc(100vh - 104px);
+  padding: clamp(22px, 4vw, 48px);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  outline: none;
+}
+
+.ProseMirror:focus {
+  box-shadow: 0 0 0 4px var(--ring);
+}
+
+.ProseMirror h2 {
+  margin: 0 0 20px;
+  font-size: 32px;
+  line-height: 1.16;
+}
+
+.ProseMirror p {
+  margin: 0 0 16px;
+}
+
+.ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.ProseMirror strong {
+  font-weight: 750;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 12px;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .editor-frame {
+    padding: 12px;
+  }
+
+  .ProseMirror {
+    min-height: 54vh;
+  }
 }

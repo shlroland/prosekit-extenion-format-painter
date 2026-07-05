@@ -1,0 +1,8 @@
+.ProseMirror[data-format-painter='active'],
+.ProseMirror[data-format-painter='sticky'] {
+  cursor: copy;
+}
+
+.ProseMirror[data-format-painter='sticky'] {
+  caret-color: var(--format-painter-caret-color, currentColor);
+}
