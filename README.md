@@ -21,7 +21,7 @@ import 'prosekit-extension-format-painter/style.css'
 
 import { defineBasicExtension } from '@prosekit/basic'
 import { union } from '@prosekit/core'
-import { defineFormatPainter } from 'prosekit-extension-format-painter'
+import { createFormatPainter } from 'prosekit-extension-format-painter'
 
 const formatPainterOptions = {
   marks: {
@@ -41,37 +41,35 @@ const formatPainterOptions = {
   },
 }
 
+const formatPainter = createFormatPainter(formatPainterOptions)
+
 const extension = union(
   defineBasicExtension(),
-  defineFormatPainter(formatPainterOptions),
+  formatPainter.extension,
 )
 ```
 
 Bind your toolbar to the headless helpers:
 
 ```ts
-import {
-  getFormatPainterState,
-  toggleFormatPainterForView,
-} from 'prosekit-extension-format-painter'
-
 button.addEventListener('mousedown', (event) => {
   event.preventDefault()
 })
 
 button.addEventListener('click', () => {
-  toggleFormatPainterForView(editor.view, formatPainterOptions)
+  formatPainter.toggleFormatPainterForView(editor.view)
 })
 
 button.addEventListener('dblclick', () => {
-  toggleFormatPainterForView(editor.view, {
-    ...formatPainterOptions,
-    sticky: true,
-  })
+  formatPainter.toggleFormatPainterForView(editor.view, { sticky: true })
 })
 
-const active = getFormatPainterState(editor.state).active
+const active = formatPainter.getState(editor.state).active
 ```
+
+`defineFormatPainter(options)` and the standalone command/view helpers are still
+exported for lower-level integrations. Prefer `createFormatPainter(options)`
+when an app has one shared options object.
 
 ## MVP Scope
 

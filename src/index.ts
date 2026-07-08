@@ -90,6 +90,35 @@ export interface FormatPainterState {
   sample: FormatSample | null
 }
 
+export interface ToggleFormatPainterOptions {
+  sticky?: boolean
+}
+
+export interface FormatPainterController {
+  extension: PlainExtension
+  commands: {
+    copyFormat: Command
+    applyFormat: Command
+    toggleFormatPainter: (options?: ToggleFormatPainterOptions) => Command
+    clearFormatPainter: Command
+  }
+  copyFormatForView: (view: EditorView) => boolean
+  applyFormatForView: (view: EditorView) => boolean
+  toggleFormatPainterForView: (
+    view: EditorView,
+    options?: ToggleFormatPainterOptions,
+  ) => boolean
+  clearFormatPainterForView: (view: EditorView) => boolean
+  getState: (state: EditorState) => FormatPainterState
+  isActive: (state: EditorState) => boolean
+  getSample: (state: EditorState) => FormatSample | null
+  setSample: (
+    view: EditorView,
+    sample: FormatSample | null,
+    options?: { active?: boolean; sticky?: boolean },
+  ) => boolean
+}
+
 interface FormatPainterMeta {
   active?: boolean
   sticky?: boolean
@@ -140,6 +169,30 @@ export function defineFormatPainter(
       Escape: clearFormatPainter,
     }),
   )
+}
+
+export function createFormatPainter(
+  options: FormatPainterOptions = {},
+): FormatPainterController {
+  return {
+    extension: defineFormatPainter(options),
+    commands: {
+      copyFormat: copyFormat(options),
+      applyFormat: applyFormat(options),
+      toggleFormatPainter: (toggleOptions = {}) =>
+        toggleFormatPainter({ ...options, ...toggleOptions }),
+      clearFormatPainter,
+    },
+    copyFormatForView: (view) => copyFormatForView(view, options),
+    applyFormatForView: (view) => applyFormatForView(view, options),
+    toggleFormatPainterForView: (view, toggleOptions = {}) =>
+      toggleFormatPainterForView(view, { ...options, ...toggleOptions }),
+    clearFormatPainterForView,
+    getState: getFormatPainterState,
+    isActive: isFormatPainterActive,
+    getSample: getFormatSample,
+    setSample: setFormatSample,
+  }
 }
 
 export function getFormatPainterState(

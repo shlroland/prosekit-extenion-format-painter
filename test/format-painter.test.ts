@@ -8,6 +8,7 @@ import { expect, it } from 'vitest'
 import {
   applyFormatForView,
   copyFormatForView,
+  createFormatPainter,
   defineFormatPainter,
   getFormatPainterState,
   toggleFormatPainterForView,
@@ -16,10 +17,16 @@ import {
 import { getTestContainerDiv } from './utils.ts'
 
 function setupEditor(options: Parameters<typeof defineFormatPainter>[0] = {}) {
+  return setupEditorWithFormatPainterExtension(defineFormatPainter(options))
+}
+
+function setupEditorWithFormatPainterExtension(
+  formatPainterExtension: ReturnType<typeof defineFormatPainter>,
+) {
   const extension = union(
     defineBasicExtension(),
     defineTextAlign({ types: ['paragraph', 'heading'] }),
-    defineFormatPainter(options),
+    formatPainterExtension,
   )
   const editor = createTestEditor({ extension })
   editor.mount(getTestContainerDiv())
@@ -122,7 +129,8 @@ it('copies included textblock type and attrs after converting the block type', (
       },
     },
   } satisfies Parameters<typeof defineFormatPainter>[0]
-  const editor = setupEditor(options)
+  const formatPainter = createFormatPainter(options)
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
   const n = editor.nodes
 
   editor.set(
@@ -133,10 +141,10 @@ it('copies included textblock type and attrs after converting the block type', (
   )
 
   setTextSelection(editor, 2)
-  expect(copyFormatForView(editor.view, options)).toBe(true)
+  expect(formatPainter.copyFormatForView(editor.view)).toBe(true)
 
   setTextSelection(editor, 9)
-  expect(applyFormatForView(editor.view, options)).toBe(true)
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
 
   expect(editor.state.doc.toJSON()).toMatchInlineSnapshot(`
     {

@@ -20,9 +20,7 @@ import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import {
-  defineFormatPainter,
-  getFormatPainterState,
-  toggleFormatPainterForView,
+  createFormatPainter,
 } from '../src/index.ts'
 
 const formatPainterOptions = {
@@ -36,13 +34,15 @@ const formatPainterOptions = {
       },
     },
   },
-} satisfies Parameters<typeof defineFormatPainter>[0]
+} satisfies Parameters<typeof createFormatPainter>[0]
+
+const formatPainter = createFormatPainter(formatPainterOptions)
 
 function defineEditorExtension() {
   return union(
     defineBasicExtension(),
     defineTextAlign({ types: ['paragraph', 'heading'] }),
-    defineFormatPainter(formatPainterOptions),
+    formatPainter.extension,
   )
 }
 
@@ -84,7 +84,7 @@ function App() {
   const sync = () => forceUpdate((value) => value + 1)
   const editor = editorRef.current
   const painterState = editor
-    ? getFormatPainterState(editor.state)
+    ? formatPainter.getState(editor.state)
     : { active: false, sticky: false, sample: null }
 
   useEffect(() => {
@@ -275,14 +275,13 @@ function App() {
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 if (editor) {
-                  toggleFormatPainterForView(editor.view, formatPainterOptions)
+                  formatPainter.toggleFormatPainterForView(editor.view)
                   sync()
                 }
               }}
               onDoubleClick={() => {
                 if (editor) {
-                  toggleFormatPainterForView(editor.view, {
-                    ...formatPainterOptions,
+                  formatPainter.toggleFormatPainterForView(editor.view, {
                     sticky: true,
                   })
                   sync()
@@ -298,8 +297,7 @@ function App() {
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 if (editor) {
-                  toggleFormatPainterForView(editor.view, {
-                    ...formatPainterOptions,
+                  formatPainter.toggleFormatPainterForView(editor.view, {
                     sticky: true,
                   })
                   sync()
