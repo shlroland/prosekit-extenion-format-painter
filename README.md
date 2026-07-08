@@ -39,6 +39,12 @@ const formatPainterOptions = {
       },
     },
   },
+  wrappers: {
+    include: ['blockquote', 'list'],
+    attrs: {
+      list: ['kind', 'order'],
+    },
+  },
 }
 
 const formatPainter = createFormatPainter(formatPainterOptions)
@@ -77,11 +83,12 @@ when an app has one shared options object.
 - Supports `exclude`, `preserve`, and `replace`/`merge` mark application.
 - Supports textblock `blockType` and selected attrs through explicit `include`
   configuration.
+- Supports configured block wrappers, including `blockquote` and ProseKit's
+  flat `list` node. List kind/order copying requires `attrs.list`.
 - Supports one-shot and sticky painter states.
 - Applies automatically on editor `mouseup`.
 - Clears with `Escape`.
 - Adds `data-format-painter="inactive|active|sticky"` to the editor DOM.
-- Keeps wrapper/list configuration reserved for a later implementation.
 
 ## Development
 

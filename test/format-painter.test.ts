@@ -51,6 +51,24 @@ function markNamesAt(doc: ReturnType<typeof setupEditor>['state']['doc'], pos: n
     .sort()
 }
 
+function findTextRange(
+  editor: ReturnType<typeof setupEditor>,
+  text: string,
+): [number, number] {
+  let range: [number, number] | undefined
+
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isText && node.text === text) {
+      range = [pos, pos + text.length]
+      return false
+    }
+    return true
+  })
+
+  if (!range) throw new Error(`Failed to find text: ${text}`)
+  return range
+}
+
 it('stores a sample and exposes active state on the editor DOM', () => {
   const editor = setupEditor()
   const n = editor.nodes
@@ -66,6 +84,206 @@ it('stores a sample and exposes active state on the editor DOM', () => {
     sticky: false,
   })
   expect(editor.view.dom.getAttribute('data-format-painter')).toBe('active')
+
+  editor.unmount()
+})
+
+it('copies a blockquote wrapper to a plain textblock', () => {
+  const formatPainter = createFormatPainter({
+    wrappers: { include: ['blockquote'] },
+  })
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(
+    n.doc(
+      n.blockquote(n.paragraph('Quoted')),
+      n.paragraph('Plain'),
+    ),
+  )
+
+  setTextSelection(editor, ...findTextRange(editor, 'Quoted'))
+  expect(formatPainter.copyFormatForView(editor.view)).toBe(true)
+
+  setTextSelection(editor, ...findTextRange(editor, 'Plain'))
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+
+  expect(editor.state.doc.toJSON()).toMatchInlineSnapshot(`
+    {
+      "content": [
+        {
+          "content": [
+            {
+              "attrs": {
+                "textAlign": "left",
+              },
+              "content": [
+                {
+                  "text": "Quoted",
+                  "type": "text",
+                },
+              ],
+              "type": "paragraph",
+            },
+          ],
+          "type": "blockquote",
+        },
+        {
+          "content": [
+            {
+              "attrs": {
+                "textAlign": "left",
+              },
+              "content": [
+                {
+                  "text": "Plain",
+                  "type": "text",
+                },
+              ],
+              "type": "paragraph",
+            },
+          ],
+          "type": "blockquote",
+        },
+      ],
+      "type": "doc",
+    }
+  `)
+
+  editor.unmount()
+})
+
+it('removes configured wrappers when the sample has none', () => {
+  const formatPainter = createFormatPainter({
+    wrappers: { include: ['blockquote'] },
+  })
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(
+    n.doc(
+      n.paragraph('Plain'),
+      n.blockquote(n.paragraph('Quoted')),
+    ),
+  )
+
+  setTextSelection(editor, ...findTextRange(editor, 'Plain'))
+  expect(formatPainter.copyFormatForView(editor.view)).toBe(true)
+
+  setTextSelection(editor, ...findTextRange(editor, 'Quoted'))
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+
+  expect(editor.state.doc.toJSON()).toMatchInlineSnapshot(`
+    {
+      "content": [
+        {
+          "attrs": {
+            "textAlign": "left",
+          },
+          "content": [
+            {
+              "text": "Plain",
+              "type": "text",
+            },
+          ],
+          "type": "paragraph",
+        },
+        {
+          "attrs": {
+            "textAlign": "left",
+          },
+          "content": [
+            {
+              "text": "Quoted",
+              "type": "text",
+            },
+          ],
+          "type": "paragraph",
+        },
+      ],
+      "type": "doc",
+    }
+  `)
+
+  editor.unmount()
+})
+
+it('copies ProseKit flat list wrapper attrs', () => {
+  const formatPainter = createFormatPainter({
+    wrappers: {
+      include: ['list'],
+      attrs: { list: ['kind', 'order'] },
+    },
+  })
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(
+    n.doc(
+      n.list({ kind: 'ordered', order: 3 }, n.paragraph('One')),
+      n.paragraph('Two'),
+    ),
+  )
+
+  setTextSelection(editor, ...findTextRange(editor, 'One'))
+  expect(formatPainter.copyFormatForView(editor.view)).toBe(true)
+
+  setTextSelection(editor, ...findTextRange(editor, 'Two'))
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+
+  expect(editor.state.doc.toJSON()).toMatchInlineSnapshot(`
+    {
+      "content": [
+        {
+          "attrs": {
+            "checked": false,
+            "collapsed": false,
+            "kind": "ordered",
+            "order": 3,
+          },
+          "content": [
+            {
+              "attrs": {
+                "textAlign": "left",
+              },
+              "content": [
+                {
+                  "text": "One",
+                  "type": "text",
+                },
+              ],
+              "type": "paragraph",
+            },
+          ],
+          "type": "list",
+        },
+        {
+          "attrs": {
+            "checked": false,
+            "collapsed": false,
+            "kind": "ordered",
+            "order": 3,
+          },
+          "content": [
+            {
+              "attrs": {
+                "textAlign": "left",
+              },
+              "content": [
+                {
+                  "text": "Two",
+                  "type": "text",
+                },
+              ],
+              "type": "paragraph",
+            },
+          ],
+          "type": "list",
+        },
+      ],
+      "type": "doc",
+    }
+  `)
 
   editor.unmount()
 })

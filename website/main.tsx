@@ -34,6 +34,12 @@ const formatPainterOptions = {
       },
     },
   },
+  wrappers: {
+    include: ['blockquote', 'list'],
+    attrs: {
+      list: ['kind', 'order'],
+    },
+  },
 } satisfies Parameters<typeof createFormatPainter>[0]
 
 const formatPainter = createFormatPainter(formatPainterOptions)
@@ -108,16 +114,31 @@ function App() {
             ],
           },
           {
-            type: 'paragraph',
-            attrs: { textAlign: 'left' },
+            type: 'blockquote',
             content: [
-              { type: 'text', text: 'Source style: ' },
               {
-                type: 'text',
-                marks: [{ type: 'bold' }, { type: 'italic' }],
-                text: 'bold italic emphasis',
+                type: 'paragraph',
+                attrs: { textAlign: 'left' },
+                content: [
+                  { type: 'text', text: 'Source style: ' },
+                  {
+                    type: 'text',
+                    marks: [{ type: 'bold' }, { type: 'italic' }],
+                    text: 'bold italic quote',
+                  },
+                ],
               },
-              { type: 'text', text: ' with centered heading settings above.' },
+            ],
+          },
+          {
+            type: 'list',
+            attrs: { kind: 'ordered', order: 3 },
+            content: [
+              {
+                type: 'paragraph',
+                attrs: { textAlign: 'left' },
+                content: [{ type: 'text', text: 'Ordered list source' }],
+              },
             ],
           },
           {

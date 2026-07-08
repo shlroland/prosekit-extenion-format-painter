@@ -2,14 +2,17 @@ import {
   defineKeymap,
   definePlugin,
   union,
+  wrap,
   type PlainExtension,
 } from '@prosekit/core'
+import { lift } from '@prosekit/pm/commands'
 import type { Attrs, Mark, Node as ProseMirrorNode } from '@prosekit/pm/model'
 import {
+  EditorState,
   PluginKey,
   ProseMirrorPlugin,
+  TextSelection,
   type Command,
-  type EditorState,
   type Transaction,
 } from '@prosekit/pm/state'
 import type { EditorView } from '@prosekit/pm/view'
@@ -409,16 +412,49 @@ function applySampleToTransaction(
     changed = applyTextblockSample(tr, state, sample.textblock, options) || changed
   }
 
-  if (sample.wrappers?.length) {
-    for (const wrapper of sample.wrappers) {
-      options.onUnsupportedStyle?.(wrapperToUnsupportedStyle(wrapper), {
-        reason: 'wrappers are not implemented in the MVP',
-        state,
-      })
-    }
+  if (options.wrappers.include.length > 0) {
+    changed = applyWrapperSample(tr, state, sample.wrappers || [], options) || changed
   }
 
   changed = applyMarkSample(tr, state, sample.marks, options) || changed
+  return changed
+}
+
+function applyWrapperSample(
+  tr: Transaction,
+  state: EditorState,
+  wrappers: WrapperSample[],
+  options: ResolvedOptions,
+): boolean {
+  const ranges = getSelectedTextblocks(state)
+  let changed = false
+
+  for (const range of ranges) {
+    const originalPos = range.pos
+    changed =
+      removeConfiguredWrappersFromTextblock(tr, state, originalPos, options)
+      || changed
+
+    for (const wrapper of wrappers) {
+      const attrs = getTargetWrapperAttrs(wrapper, options)
+      const wrapped = runCommandOnTextblock(
+        tr,
+        state,
+        originalPos,
+        wrap({ type: wrapper.type, attrs }),
+      )
+
+      if (wrapped) {
+        changed = true
+      } else {
+        options.onUnsupportedStyle?.(wrapperToUnsupportedStyle(wrapper), {
+          reason: 'wrapper cannot be applied at the target position',
+          state,
+        })
+      }
+    }
+  }
+
   return changed
 }
 
@@ -574,15 +610,6 @@ function getWrapperSample(
       }
     })
 
-  if (wrappers.length > 0) {
-    for (const wrapper of wrappers) {
-      options.onUnsupportedStyle?.(wrapperToUnsupportedStyle(wrapper), {
-        reason: 'wrappers are not implemented in the MVP',
-        state,
-      })
-    }
-  }
-
   return wrappers.length > 0 ? wrappers : undefined
 }
 
@@ -654,6 +681,108 @@ function getSelectionAncestors(state: EditorState): ProseMirrorNode[] {
   }
 
   return ancestors
+}
+
+function getTextblockAt(
+  doc: ProseMirrorNode,
+  pos: number,
+): { pos: number; node: ProseMirrorNode } | undefined {
+  const resolvedPos = Math.min(Math.max(pos + 1, 0), doc.content.size)
+  const $pos = doc.resolve(resolvedPos)
+
+  for (let depth = $pos.depth; depth > 0; depth -= 1) {
+    const node = $pos.node(depth)
+    if (node.isTextblock) {
+      return { pos: $pos.before(depth), node }
+    }
+  }
+
+  return undefined
+}
+
+function getTextblockAncestorNames(
+  doc: ProseMirrorNode,
+  pos: number,
+): string[] {
+  const resolvedPos = Math.min(Math.max(pos + 1, 0), doc.content.size)
+  const $pos = doc.resolve(resolvedPos)
+  const names: string[] = []
+
+  for (let depth = 1; depth <= $pos.depth; depth += 1) {
+    const node = $pos.node(depth)
+    if (!node.isTextblock) names.push(node.type.name)
+  }
+
+  return names
+}
+
+function hasConfiguredWrapperAt(
+  tr: Transaction,
+  originalTextblockPos: number,
+  options: ResolvedOptions,
+): boolean {
+  const mappedPos = tr.mapping.map(originalTextblockPos)
+  return getTextblockAncestorNames(tr.doc, mappedPos).some((name) =>
+    options.wrappers.include.includes(name),
+  )
+}
+
+function removeConfiguredWrappersFromTextblock(
+  tr: Transaction,
+  state: EditorState,
+  originalTextblockPos: number,
+  options: ResolvedOptions,
+): boolean {
+  let changed = false
+
+  for (let count = 0; count < options.wrappers.include.length; count += 1) {
+    if (!hasConfiguredWrapperAt(tr, originalTextblockPos, options)) break
+    if (!runCommandOnTextblock(tr, state, originalTextblockPos, lift)) break
+    changed = true
+  }
+
+  return changed
+}
+
+function runCommandOnTextblock(
+  tr: Transaction,
+  state: EditorState,
+  originalTextblockPos: number,
+  command: Command,
+): boolean {
+  const mappedPos = tr.mapping.map(originalTextblockPos)
+  const textblock = getTextblockAt(tr.doc, mappedPos)
+  if (!textblock) return false
+
+  const from = textblock.pos + 1
+  const to = textblock.pos + textblock.node.nodeSize - 1
+  const selection = TextSelection.create(tr.doc, from, to)
+  const tempState = EditorState.create({
+    doc: tr.doc,
+    selection,
+    plugins: state.plugins,
+  })
+  let commandTr: Transaction | undefined
+  const handled = command(tempState, (nextTr) => {
+    commandTr = nextTr
+  })
+
+  if (!handled || !commandTr || commandTr.steps.length === 0) return false
+
+  for (const step of commandTr.steps) {
+    tr.step(step)
+  }
+  return true
+}
+
+function getTargetWrapperAttrs(
+  wrapper: WrapperSample,
+  options: ResolvedOptions,
+): Attrs | null {
+  const attrs = wrapper.attrs || {}
+  const include = options.wrappers.attrs[wrapper.type]
+  const copiedAttrs = filterAttrs(attrs, include)
+  return Object.keys(copiedAttrs).length > 0 ? copiedAttrs : null
 }
 
 function findAncestorTextblock(
