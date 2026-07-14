@@ -338,11 +338,13 @@ export function setFormatSample(
   sample: FormatSample | null,
   options: { active?: boolean; sticky?: boolean } = {},
 ): boolean {
+  const active = sample ? (options.active ?? true) : false
+
   view.dispatch(
     view.state.tr.setMeta(formatPainterPluginKey, {
       sample,
-      active: options.active ?? Boolean(sample),
-      sticky: options.sticky ?? false,
+      active,
+      sticky: active && (options.sticky ?? false),
     } satisfies FormatPainterMeta),
   )
   return true
@@ -469,11 +471,18 @@ function applyMarkSample(
 
   if (selection.empty) {
     const currentMarks = state.storedMarks || selection.$from.marks()
+    const sampleMarks = createMarks(state, marks, options)
+
+    if (options.marks.apply === 'merge') {
+      tr.setStoredMarks(
+        sampleMarks.reduce((result, mark) => mark.addToSet(result), currentMarks),
+      )
+      return true
+    }
+
     const unmanagedMarks = currentMarks.filter(
       (mark) => !managedNames.includes(mark.type.name),
     )
-    const sampleMarks = createMarks(state, marks, options)
-
     tr.setStoredMarks([...unmanagedMarks, ...sampleMarks])
     return true
   }

@@ -288,6 +288,39 @@ it('copies ProseKit flat list wrapper attrs', () => {
   editor.unmount()
 })
 
+it('copies nested wrappers from inner to outer structure', () => {
+  const formatPainter = createFormatPainter({
+    wrappers: {
+      include: ['blockquote', 'list'],
+      attrs: { list: ['kind', 'order'] },
+    },
+  })
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(
+    n.doc(
+      n.blockquote(
+        n.list({ kind: 'ordered', order: 3 }, n.paragraph('Source')),
+      ),
+      n.paragraph('Target'),
+    ),
+  )
+
+  setTextSelection(editor, ...findTextRange(editor, 'Source'))
+  expect(formatPainter.copyFormatForView(editor.view)).toBe(true)
+
+  setTextSelection(editor, ...findTextRange(editor, 'Target'))
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+
+  const target = editor.state.doc.child(1)
+  expect(target.type.name).toBe('blockquote')
+  expect(target.firstChild?.type.name).toBe('list')
+  expect(target.firstChild?.attrs).toMatchObject({ kind: 'ordered', order: 3 })
+
+  editor.unmount()
+})
+
 it('replaces managed marks while preserving excluded link marks', () => {
   const editor = setupEditor()
   const n = editor.nodes
@@ -315,6 +348,70 @@ it('replaces managed marks while preserving excluded link marks', () => {
   editor.unmount()
 })
 
+it('merges sampled marks with existing target marks when configured', () => {
+  const editor = setupEditor({ marks: { apply: 'merge' } })
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(n.doc(n.paragraph(m.bold('foo'), ' ', m.italic('bar'))))
+
+  setTextSelection(editor, 1, 4)
+  expect(copyFormatForView(editor.view, { marks: { apply: 'merge' } })).toBe(
+    true,
+  )
+
+  setTextSelection(editor, 5, 8)
+  expect(applyFormatForView(editor.view, { marks: { apply: 'merge' } })).toBe(
+    true,
+  )
+
+  expect(markNamesAt(editor.state.doc, 6)).toEqual(['bold', 'italic'])
+
+  editor.unmount()
+})
+
+it('keeps preserved marks on the target while applying sampled marks', () => {
+  const options = { marks: { preserve: ['italic'] } }
+  const editor = setupEditor(options)
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(n.doc(n.paragraph(m.bold('foo'), ' ', m.italic('bar'))))
+
+  setTextSelection(editor, 1, 4)
+  expect(copyFormatForView(editor.view, options)).toBe(true)
+
+  setTextSelection(editor, 5, 8)
+  expect(applyFormatForView(editor.view, options)).toBe(true)
+
+  expect(markNamesAt(editor.state.doc, 6)).toEqual(['bold', 'italic'])
+
+  editor.unmount()
+})
+
+it('uses the mark filter for sampling and applying marks', () => {
+  const options = {
+    marks: {
+      filter: (markName: string) => markName !== 'italic',
+    },
+  }
+  const editor = setupEditor(options)
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(n.doc(n.paragraph(m.bold(m.italic('foo')), ' bar')))
+
+  setTextSelection(editor, 1, 4)
+  expect(copyFormatForView(editor.view, options)).toBe(true)
+
+  setTextSelection(editor, 5, 8)
+  expect(applyFormatForView(editor.view, options)).toBe(true)
+
+  expect(markNamesAt(editor.state.doc, 6)).toEqual(['bold'])
+
+  editor.unmount()
+})
+
 it('writes sampled marks to storedMarks for a collapsed target selection', () => {
   const editor = setupEditor()
   const n = editor.nodes
@@ -330,6 +427,116 @@ it('writes sampled marks to storedMarks for a collapsed target selection', () =>
   expect(editor.state.storedMarks?.map((mark) => mark.type.name)).toEqual([
     'bold',
   ])
+
+  editor.unmount()
+})
+
+it('merges sampled marks with stored marks at a collapsed target selection', () => {
+  const options = {
+    marks: { apply: 'merge' },
+  } satisfies Parameters<typeof defineFormatPainter>[0]
+  const editor = setupEditor(options)
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(n.doc(n.paragraph(m.bold('foo'), ' ', m.italic('bar'))))
+  setTextSelection(editor, 1, 4)
+  expect(copyFormatForView(editor.view, options)).toBe(true)
+
+  setTextSelection(editor, 6)
+  expect(applyFormatForView(editor.view, options)).toBe(true)
+
+  expect(editor.state.storedMarks?.map((mark) => mark.type.name).sort()).toEqual([
+    'bold',
+    'italic',
+  ])
+
+  editor.unmount()
+})
+
+it('does not apply on mouseup when automatic mouseup interaction is disabled', async () => {
+  const options = { interaction: { applyOnMouseUp: false } }
+  const editor = setupEditor(options)
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(n.doc(n.paragraph(m.bold('foo'), ' bar')))
+  setTextSelection(editor, 1, 4)
+  expect(copyFormatForView(editor.view, options)).toBe(true)
+
+  setTextSelection(editor, 5, 8)
+  editor.view.dom.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+  await new Promise((resolve) => setTimeout(resolve, 10))
+
+  expect(markNamesAt(editor.state.doc, 6)).toEqual([])
+  expect(getFormatPainterState(editor.state).active).toBe(true)
+
+  editor.unmount()
+})
+
+it('clears active format painter state when Escape is pressed', () => {
+  const editor = setupEditor()
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(n.doc(n.paragraph(m.bold('foo'))))
+  setTextSelection(editor, 1, 4)
+  expect(copyFormatForView(editor.view)).toBe(true)
+
+  editor.view.dom.dispatchEvent(
+    new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }),
+  )
+
+  expect(getFormatPainterState(editor.state)).toMatchObject({
+    active: false,
+    sticky: false,
+  })
+  expect(editor.view.dom.getAttribute('data-format-painter')).toBe('inactive')
+
+  editor.unmount()
+})
+
+it('reports unsupported sampled styles through the callback', () => {
+  const unsupportedStyles: string[] = []
+  const formatPainter = createFormatPainter({
+    onUnsupportedStyle(style, context) {
+      unsupportedStyles.push(`${style.kind}:${style.type}:${context.reason}`)
+    },
+  })
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(n.doc(n.paragraph('foo')))
+  setTextSelection(editor, 1, 4)
+  expect(
+    formatPainter.setSample(editor.view, {
+      marks: [{ type: 'missingMark', attrs: {} }],
+    }),
+  ).toBe(true)
+
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+
+  expect(unsupportedStyles).toEqual([
+    'mark:missingMark:mark type is not in the target schema',
+  ])
+
+  editor.unmount()
+})
+
+it('keeps the painter inactive when its sample is cleared', () => {
+  const formatPainter = createFormatPainter()
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+
+  expect(
+    formatPainter.setSample(editor.view, null, { active: true, sticky: true }),
+  ).toBe(true)
+
+  expect(formatPainter.getState(editor.state)).toEqual({
+    active: false,
+    sticky: false,
+    sample: null,
+  })
+  expect(editor.view.dom.getAttribute('data-format-painter')).toBe('inactive')
 
   editor.unmount()
 })
@@ -397,6 +604,47 @@ it('copies included textblock type and attrs after converting the block type', (
       "type": "doc",
     }
   `)
+
+  editor.unmount()
+})
+
+it('applies a textblock sample to every selected textblock', () => {
+  const options = {
+    textblock: {
+      include: ['blockType', 'attrs'],
+      blockTypes: { include: ['paragraph', 'heading'] },
+      attrs: {
+        byType: {
+          heading: ['level', 'textAlign'],
+        },
+      },
+    },
+  } satisfies Parameters<typeof defineFormatPainter>[0]
+  const formatPainter = createFormatPainter(options)
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(
+    n.doc(
+      n.heading({ level: 2, textAlign: 'center' }, 'Source'),
+      n.paragraph('First target'),
+      n.paragraph('Second target'),
+    ),
+  )
+
+  setTextSelection(editor, ...findTextRange(editor, 'Source'))
+  expect(formatPainter.copyFormatForView(editor.view)).toBe(true)
+
+  const [from] = findTextRange(editor, 'First target')
+  const [, to] = findTextRange(editor, 'Second target')
+  setTextSelection(editor, from, to)
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+
+  for (const index of [1, 2]) {
+    const target = editor.state.doc.child(index)
+    expect(target.type.name).toBe('heading')
+    expect(target.attrs).toMatchObject({ level: 2, textAlign: 'center' })
+  }
 
   editor.unmount()
 })

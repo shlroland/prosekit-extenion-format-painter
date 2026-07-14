@@ -1,20 +1,26 @@
 {
   "name": "prosekit-extension-format-painter",
   "type": "module",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "packageManager": "pnpm@11.5.1",
   "description": "A headless ProseKit extension for format painter interactions",
-  "author": "ocavue <ocavue@gmail.com>",
+  "author": "shlroland",
   "license": "MIT",
-  "funding": "https://github.com/sponsors/ocavue",
-  "homepage": "https://github.com/prosekit/prosekit-extension-template",
+  "homepage": "https://github.com/shlroland/prosekit-extenion-format-painter#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/prosekit/prosekit-extension-template.git"
+    "url": "git+https://github.com/shlroland/prosekit-extenion-format-painter.git"
   },
-  "bugs": "https://github.com/prosekit/prosekit-extension-template/issues",
-  "keywords": [],
-  "sideEffects": false,
+  "bugs": "https://github.com/shlroland/prosekit-extenion-format-painter/issues",
+  "keywords": [
+    "prosekit",
+    "prosemirror",
+    "format-painter",
+    "rich-text-editor"
+  ],
+  "sideEffects": [
+    "./src/style.css"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
