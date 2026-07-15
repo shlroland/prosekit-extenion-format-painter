@@ -32,3 +32,17 @@ Tests use Vitest with Playwright Chromium browser mode. Add behavior tests in `t
 ## Commit & Pull Request Guidelines
 
 Recent history uses short Conventional Commit-style subjects, such as `feat: add format painter extension`. Keep commit subjects imperative and scoped to one change. Pull requests should include a clear description, tests run, linked issues when applicable, and screenshots for visible demo changes. Note API or behavior changes explicitly because this package is published through its `dist` output and `exports` map.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in this repository's GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default five-label triage vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Use the single-context layout: root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.
