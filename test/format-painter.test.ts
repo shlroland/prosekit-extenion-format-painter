@@ -223,6 +223,32 @@ it('removes configured wrappers when the sample has none', () => {
   editor.unmount()
 })
 
+it('keeps target wrappers when a sampled wrapper is unsupported', () => {
+  const unsupported: string[] = []
+  const formatPainter = createFormatPainter({
+    wrappers: { include: ['blockquote'] },
+    onUnsupportedStyle(style, context) {
+      unsupported.push(`${style.type}:${context.reason}`)
+    },
+  })
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(n.doc(n.blockquote(n.paragraph('Target'))))
+  setTextSelection(editor, ...findTextRange(editor, 'Target'))
+  formatPainter.setSample(editor.view, {
+    marks: [],
+    wrappers: [{ type: 'missingWrapper' }],
+  })
+
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(false)
+  expect(editor.state.doc.child(0).type.name).toBe('blockquote')
+  expect(formatPainter.isActive(editor.state)).toBe(true)
+  expect(unsupported).toEqual(['missingWrapper:incompatible-wrapper'])
+
+  editor.unmount()
+})
+
 it('copies ProseKit flat list wrapper attrs', () => {
   const formatPainter = createFormatPainter({
     wrappers: {

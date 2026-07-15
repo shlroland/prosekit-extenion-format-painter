@@ -468,6 +468,14 @@ function applySampleToTransaction(
 ): boolean {
   let changed = false
 
+  const hasMissingWrapperType = sample.wrappers?.some(
+    (wrapper) => !state.schema.nodes[wrapper.type],
+  )
+  if (hasMissingWrapperType) {
+    applyWrapperSample(tr, state, sample.wrappers || [], options)
+    return false
+  }
+
   if (sample.textblock) {
     changed = applyTextblockSample(tr, state, sample.textblock, options) || changed
   }
@@ -491,6 +499,18 @@ function applyWrapperSample(
 
   for (const range of ranges) {
     const originalPos = range.pos
+    const unsupportedWrapper = wrappers.find(
+      (wrapper) => !state.schema.nodes[wrapper.type],
+    )
+    if (unsupportedWrapper) {
+      options.onUnsupportedStyle?.(wrapperToUnsupportedStyle(unsupportedWrapper), {
+        reason: 'incompatible-wrapper',
+        state,
+        target: { from: range.pos, to: range.pos + range.node.nodeSize },
+      })
+      continue
+    }
+
     changed =
       removeConfiguredWrappersFromTextblock(tr, state, originalPos, options)
       || changed
