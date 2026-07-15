@@ -20,7 +20,6 @@ import type { EditorView } from '@prosekit/pm/view'
 export type MarkApplyMode = 'replace' | 'merge'
 
 export interface FormatPainterMarkOptions {
-  mode?: 'all'
   exclude?: string[]
   preserve?: string[]
   apply?: MarkApplyMode
@@ -44,8 +43,21 @@ export interface FormatPainterWrapperOptions {
 }
 
 export interface UnsupportedStyleContext {
-  reason: string
+  reason: FormatPainterUnsupportedReason
   state: EditorState
+  target: FormatPainterTarget
+}
+
+export type FormatPainterUnsupportedReason =
+  | 'missing-mark-type'
+  | 'invalid-mark-attrs'
+  | 'missing-textblock-type'
+  | 'incompatible-textblock'
+  | 'incompatible-wrapper'
+
+export interface FormatPainterTarget {
+  from: number
+  to: number
 }
 
 export interface FormatPainterOptions {
@@ -60,6 +72,42 @@ export interface FormatPainterOptions {
     context: UnsupportedStyleContext,
   ) => void
 }
+
+export const defaultFormatPainterOptions = {
+  marks: {
+    exclude: ['link'],
+    apply: 'replace',
+  },
+  textblock: {
+    include: [],
+  },
+  wrappers: {
+    include: [],
+  },
+  interaction: {
+    applyOnMouseUp: true,
+  },
+} satisfies FormatPainterOptions
+
+export const blockFormatPainterOptions = {
+  ...defaultFormatPainterOptions,
+  textblock: {
+    include: ['blockType', 'attrs'],
+    blockTypes: { include: ['paragraph', 'heading'] },
+    attrs: {
+      include: ['textAlign'],
+      byType: {
+        heading: ['level', 'textAlign'],
+      },
+    },
+  },
+  wrappers: {
+    include: ['blockquote', 'list'],
+    attrs: {
+      list: ['kind', 'order'],
+    },
+  },
+} satisfies FormatPainterOptions
 
 export type FormatPainterUnsupportedStyle =
   | { kind: 'mark'; type: string; attrs?: Attrs }
@@ -258,7 +306,7 @@ export function applyFormat(options: FormatPainterOptions = {}): Command {
     const tr = state.tr
     let changed = applySampleToTransaction(tr, state, sample, resolved)
 
-    if (pluginState.active && !pluginState.sticky) {
+    if (changed && pluginState.active && !pluginState.sticky) {
       tr.setMeta(formatPainterPluginKey, {
         active: false,
         sticky: false,
@@ -285,6 +333,16 @@ export function toggleFormatPainter(
         state.tr.setMeta(formatPainterPluginKey, {
           active: false,
           sticky: false,
+        } satisfies FormatPainterMeta),
+      )
+      return true
+    }
+
+    if (pluginState.active) {
+      dispatch?.(
+        state.tr.setMeta(formatPainterPluginKey, {
+          active: true,
+          sticky,
         } satisfies FormatPainterMeta),
       )
       return true
@@ -449,9 +507,16 @@ function applyWrapperSample(
       if (wrapped) {
         changed = true
       } else {
+        const target = getTextblockAt(
+          tr.doc,
+          tr.mapping.map(originalPos),
+        )
         options.onUnsupportedStyle?.(wrapperToUnsupportedStyle(wrapper), {
-          reason: 'wrapper cannot be applied at the target position',
+          reason: 'incompatible-wrapper',
           state,
+          target: target
+            ? { from: target.pos, to: target.pos + target.node.nodeSize }
+            : { from: originalPos, to: originalPos },
         })
       }
     }
@@ -471,7 +536,11 @@ function applyMarkSample(
 
   if (selection.empty) {
     const currentMarks = state.storedMarks || selection.$from.marks()
-    const sampleMarks = createMarks(state, marks, options)
+    const sampleMarks = createMarks(state, marks, options, {
+      from: selection.from,
+      to: selection.to,
+    })
+    if (marks.length > 0 && sampleMarks.length === 0) return false
 
     if (options.marks.apply === 'merge') {
       tr.setStoredMarks(
@@ -499,7 +568,10 @@ function applyMarkSample(
     }
   }
 
-  for (const mark of createMarks(state, marks, options)) {
+  const sampleMarks = createMarks(state, marks, options, { from, to })
+  if (marks.length > 0 && sampleMarks.length === 0) return false
+
+  for (const mark of sampleMarks) {
     tr.addMark(from, to, mark)
   }
 
@@ -528,7 +600,11 @@ function applyTextblockSample(
       if (typeName) {
         options.onUnsupportedStyle?.(
           { kind: 'textblock', type: typeName, attrs: sample.attrs },
-          { reason: 'textblock type is not in the target schema', state },
+          {
+            reason: 'missing-textblock-type',
+            state,
+            target: { from: mappedPos, to: mappedPos + currentNode.nodeSize },
+          },
         )
       }
       continue
@@ -542,7 +618,11 @@ function applyTextblockSample(
     } catch {
       options.onUnsupportedStyle?.(
         { kind: 'textblock', type: type.name, attrs },
-        { reason: 'textblock cannot be applied at the target position', state },
+        {
+          reason: 'incompatible-textblock',
+          state,
+          target: { from: mappedPos, to: mappedPos + currentNode.nodeSize },
+        },
       )
     }
   }
@@ -569,11 +649,31 @@ function getSampleMarks(
   options: ResolvedOptions,
 ): readonly Mark[] {
   const selection = state.selection
-  const marks = !selection.empty
-    ? selection.$from.marks()
-    : state.storedMarks || selection.$from.marks()
+  const marks = selection.empty
+    ? state.storedMarks || selection.$from.marks()
+    : getCommonSelectionMarks(state)
 
   return marks.filter((mark) => isManagedMark(mark.type.name, state, options))
+}
+
+function getCommonSelectionMarks(state: EditorState): readonly Mark[] {
+  const { selection } = state
+  let common: readonly Mark[] | undefined
+
+  state.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
+    if (!node.isText) return true
+
+    const from = Math.max(pos, selection.from)
+    const to = Math.min(pos + node.nodeSize, selection.to)
+    if (from >= to) return false
+
+    common = common
+      ? common.filter((mark) => node.marks.some((candidate) => candidate.eq(mark)))
+      : node.marks
+    return false
+  })
+
+  return common || selection.$from.marks()
 }
 
 function getTextblockSample(
@@ -607,6 +707,7 @@ function getWrapperSample(
   options: ResolvedOptions,
 ): WrapperSample[] | undefined {
   if (options.wrappers.include.length === 0) return undefined
+  if (!getSelectionTextblock(state)) return undefined
 
   const ancestors = getSelectionAncestors(state)
   const wrappers = ancestors
@@ -626,6 +727,7 @@ function createMarks(
   state: EditorState,
   marks: MarkSample[],
   options: ResolvedOptions,
+  target: FormatPainterTarget,
 ): Mark[] {
   const result: Mark[] = []
 
@@ -636,7 +738,7 @@ function createMarks(
     if (!markType) {
       options.onUnsupportedStyle?.(
         { kind: 'mark', type: sample.type, attrs: sample.attrs },
-        { reason: 'mark type is not in the target schema', state },
+        { reason: 'missing-mark-type', state, target },
       )
       continue
     }
@@ -646,7 +748,7 @@ function createMarks(
     } catch {
       options.onUnsupportedStyle?.(
         { kind: 'mark', type: sample.type, attrs: sample.attrs },
-        { reason: 'mark attrs are not valid for the target schema', state },
+        { reason: 'invalid-mark-attrs', state, target },
       )
     }
   }
@@ -677,7 +779,12 @@ function getSelectedTextblocks(
 }
 
 function getSelectionTextblock(state: EditorState): ProseMirrorNode | undefined {
-  return findAncestorTextblock(state.selection.$from)?.node
+  const { selection } = state
+  const from = findAncestorTextblock(selection.$from)
+  if (!from || selection.empty) return from?.node
+
+  const to = findAncestorTextblock(state.doc.resolve(selection.to - 1))
+  return to?.pos === from.pos ? from.node : undefined
 }
 
 function getSelectionAncestors(state: EditorState): ProseMirrorNode[] {
@@ -916,7 +1023,6 @@ function syncDOMState(view: EditorView): void {
 function resolveOptions(options: FormatPainterOptions): ResolvedOptions {
   return {
     marks: {
-      mode: options.marks?.mode || 'all',
       exclude: options.marks?.exclude || ['link'],
       preserve: options.marks?.preserve || [],
       apply: options.marks?.apply || 'replace',

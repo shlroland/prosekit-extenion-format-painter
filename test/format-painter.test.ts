@@ -9,7 +9,9 @@ import {
   applyFormatForView,
   copyFormatForView,
   createFormatPainter,
+  defaultFormatPainterOptions,
   defineFormatPainter,
+  blockFormatPainterOptions,
   getFormatPainterState,
   toggleFormatPainterForView,
 } from '../src/index.ts'
@@ -86,6 +88,19 @@ it('stores a sample and exposes active state on the editor DOM', () => {
   expect(editor.view.dom.getAttribute('data-format-painter')).toBe('active')
 
   editor.unmount()
+})
+
+it('exports safe inline defaults and an opt-in block preset', () => {
+  expect(defaultFormatPainterOptions).toMatchObject({
+    marks: { exclude: ['link'], apply: 'replace' },
+    textblock: { include: [] },
+    wrappers: { include: [] },
+    interaction: { applyOnMouseUp: true },
+  })
+  expect(blockFormatPainterOptions).toMatchObject({
+    textblock: { include: ['blockType', 'attrs'] },
+    wrappers: { include: ['blockquote', 'list'] },
+  })
 })
 
 it('copies a blockquote wrapper to a plain textblock', () => {
@@ -348,6 +363,32 @@ it('replaces managed marks while preserving excluded link marks', () => {
   editor.unmount()
 })
 
+it('samples only common inline marks from a mixed source selection', () => {
+  const editor = setupEditor()
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(
+    n.doc(
+      n.paragraph(
+        m.bold(m.italic('One')),
+        m.bold(' two'),
+        ' target',
+      ),
+    ),
+  )
+
+  setTextSelection(editor, 1, 8)
+  expect(copyFormatForView(editor.view)).toBe(true)
+
+  setTextSelection(editor, 9, 15)
+  expect(applyFormatForView(editor.view)).toBe(true)
+
+  expect(markNamesAt(editor.state.doc, 10)).toEqual(['bold'])
+
+  editor.unmount()
+})
+
 it('merges sampled marks with existing target marks when configured', () => {
   const editor = setupEditor({ marks: { apply: 'merge' } })
   const n = editor.nodes
@@ -500,7 +541,9 @@ it('reports unsupported sampled styles through the callback', () => {
   const unsupportedStyles: string[] = []
   const formatPainter = createFormatPainter({
     onUnsupportedStyle(style, context) {
-      unsupportedStyles.push(`${style.kind}:${style.type}:${context.reason}`)
+      unsupportedStyles.push(
+        `${style.kind}:${style.type}:${context.reason}:${context.target.from}-${context.target.to}`,
+      )
     },
   })
   const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
@@ -514,11 +557,12 @@ it('reports unsupported sampled styles through the callback', () => {
     }),
   ).toBe(true)
 
-  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(false)
 
   expect(unsupportedStyles).toEqual([
-    'mark:missingMark:mark type is not in the target schema',
+    'mark:missingMark:missing-mark-type:1-4',
   ])
+  expect(formatPainter.isActive(editor.state)).toBe(true)
 
   editor.unmount()
 })
@@ -649,6 +693,38 @@ it('applies a textblock sample to every selected textblock', () => {
   editor.unmount()
 })
 
+it('does not sample block format from a cross-block source selection', () => {
+  const options = {
+    textblock: {
+      include: ['blockType'],
+      blockTypes: { include: ['paragraph', 'heading'] },
+    },
+  } satisfies Parameters<typeof defineFormatPainter>[0]
+  const formatPainter = createFormatPainter(options)
+  const editor = setupEditorWithFormatPainterExtension(formatPainter.extension)
+  const n = editor.nodes
+
+  editor.set(
+    n.doc(
+      n.heading({ level: 2, textAlign: 'center' }, 'Heading source'),
+      n.paragraph('Paragraph source'),
+      n.paragraph('Target'),
+    ),
+  )
+
+  const [from] = findTextRange(editor, 'Heading source')
+  const [, to] = findTextRange(editor, 'Paragraph source')
+  setTextSelection(editor, from, to)
+  expect(formatPainter.copyFormatForView(editor.view)).toBe(true)
+
+  setTextSelection(editor, ...findTextRange(editor, 'Target'))
+  expect(formatPainter.applyFormatForView(editor.view)).toBe(true)
+
+  expect(editor.state.doc.child(2).type.name).toBe('paragraph')
+
+  editor.unmount()
+})
+
 it('keeps sticky mode active after applying a sample', () => {
   const editor = setupEditor()
   const n = editor.nodes
@@ -670,6 +746,37 @@ it('keeps sticky mode active after applying a sample', () => {
     active: true,
     sticky: true,
   })
+
+  editor.unmount()
+})
+
+it('preserves the active sample when changing painter lifecycle', () => {
+  const editor = setupEditor()
+  const n = editor.nodes
+  const m = editor.marks
+
+  editor.set(
+    n.doc(
+      n.paragraph(
+        m.bold('Source'),
+        ' ',
+        m.italic('Other'),
+        ' ',
+        m.link({ href: 'https://example.com' }, 'Target'),
+      ),
+    ),
+  )
+  setTextSelection(editor, ...findTextRange(editor, 'Source'))
+  expect(copyFormatForView(editor.view)).toBe(true)
+
+  setTextSelection(editor, ...findTextRange(editor, 'Other'))
+  expect(toggleFormatPainterForView(editor.view, { sticky: true })).toBe(true)
+
+  setTextSelection(editor, ...findTextRange(editor, 'Target'))
+  expect(applyFormatForView(editor.view)).toBe(true)
+  expect(
+    markNamesAt(editor.state.doc, findTextRange(editor, 'Target')[0] + 1),
+  ).toEqual(['bold', 'link'])
 
   editor.unmount()
 })

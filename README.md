@@ -21,33 +21,13 @@ import 'prosekit-extension-format-painter/style.css'
 
 import { defineBasicExtension } from '@prosekit/basic'
 import { union } from '@prosekit/core'
-import { createFormatPainter } from 'prosekit-extension-format-painter'
+import {
+  blockFormatPainterOptions,
+  createFormatPainter,
+  defaultFormatPainterOptions,
+} from 'prosekit-extension-format-painter'
 
-const formatPainterOptions = {
-  marks: {
-    exclude: ['link'],
-    preserve: ['comment', 'suggestion'],
-    apply: 'replace',
-  },
-  textblock: {
-    include: ['blockType', 'attrs'],
-    blockTypes: { include: ['paragraph', 'heading'] },
-    attrs: {
-      include: ['textAlign'],
-      byType: {
-        heading: ['level', 'textAlign'],
-      },
-    },
-  },
-  wrappers: {
-    include: ['blockquote', 'list'],
-    attrs: {
-      list: ['kind', 'order'],
-    },
-  },
-}
-
-const formatPainter = createFormatPainter(formatPainterOptions)
+const formatPainter = createFormatPainter(defaultFormatPainterOptions)
 
 const extension = union(
   defineBasicExtension(),
@@ -77,9 +57,31 @@ const active = formatPainter.getState(editor.state).active
 exported for lower-level integrations. Prefer `createFormatPainter(options)`
 when an app has one shared options object.
 
-## MVP Scope
+## Default behavior
 
-- Copies all schema marks by default, except `link`.
+- Uses safe inline mode: copies common inline marks from a source selection and preserves target links.
+- Cross-block source selections copy inline format only; block format is sampled only from a single textblock.
+- Applies once by default, or stays active in sticky mode.
+- Keeps a one-shot painter active when no sampled format can be applied.
+
+## Presets
+
+`defaultFormatPainterOptions` is the safe inline default. Use `blockFormatPainterOptions` to opt into ProseKit Basic block formatting (headings, quotes, and lists; alignment is copied when `defineTextAlign()` is enabled):
+
+```ts
+const formatPainter = createFormatPainter(blockFormatPainterOptions)
+```
+
+For custom schemas, pass explicit options. Use `marks.preserve` for schema-specific protected marks such as comments or suggestions.
+
+## Behavior and unsupported styles
+
+- Mixed source selections copy only their common inline marks.
+- Changing an active painter between one-shot and sticky preserves its format sample.
+- `onUnsupportedStyle` receives a stable reason and the affected target range for each unsupported style.
+
+## Supported capabilities
+
 - Supports `exclude`, `preserve`, and `replace`/`merge` mark application.
 - Supports textblock `blockType` and selected attrs through explicit `include`
   configuration.

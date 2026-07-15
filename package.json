@@ -1,7 +1,7 @@
 {
   "name": "prosekit-extension-format-painter",
   "type": "module",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "packageManager": "pnpm@11.5.1",
   "description": "A headless ProseKit extension for format painter interactions",
   "author": "shlroland",
@@ -42,6 +42,7 @@
     "fix": "eslint --fix . && prettier --write .",
     "pretest": "playwright install chromium",
     "test": "vitest",
+    "test:package": "pnpm build && node scripts/verify-package.mjs",
     "typecheck": "tsc -b"
   },
   "dependencies": {
