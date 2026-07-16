@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.0](https://github.com/shlroland/prosekit-extension-format-painter/compare/v3.0.0...v3.1.0) (2026-07-16)
+
+
+### Features
+
+* support public prosekit imports ([499a687](https://github.com/shlroland/prosekit-extension-format-painter/commit/499a6872d1aa763b0f0b6bd13dc767db6cd57aab))
+
+
+### Bug Fixes
+
+* correct repository metadata ([c3fa97c](https://github.com/shlroland/prosekit-extension-format-painter/commit/c3fa97c3ce34c143bd74febd3fe3da0e4f1a23f9))
+
 ## [3.0.0](https://github.com/shlroland/prosekit-extenion-format-painter/compare/v2.0.0...v3.0.0) (2026-07-16)
 
 
