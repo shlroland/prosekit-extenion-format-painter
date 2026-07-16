@@ -1,8 +1,8 @@
-import { defineBasicExtension } from '@prosekit/basic'
-import { union } from '@prosekit/core'
-import { createTestEditor } from '@prosekit/core/test'
-import { defineTextAlign } from '@prosekit/extensions/text-align'
-import { TextSelection } from '@prosekit/pm/state'
+import { defineBasicExtension } from 'prosekit/basic'
+import { union } from 'prosekit/core'
+import { createTestEditor } from 'prosekit/core/test'
+import { defineTextAlign } from 'prosekit/extensions/text-align'
+import { TextSelection } from 'prosekit/pm/state'
 import { expect, it } from 'vitest'
 
 import {

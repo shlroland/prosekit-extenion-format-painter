@@ -4,9 +4,9 @@ import {
   union,
   wrap,
   type PlainExtension,
-} from '@prosekit/core'
-import { lift } from '@prosekit/pm/commands'
-import type { Attrs, Mark, Node as ProseMirrorNode } from '@prosekit/pm/model'
+} from 'prosekit/core'
+import { lift } from 'prosekit/pm/commands'
+import type { Attrs, Mark, Node as ProseMirrorNode } from 'prosekit/pm/model'
 import {
   EditorState,
   PluginKey,
@@ -14,8 +14,8 @@ import {
   TextSelection,
   type Command,
   type Transaction,
-} from '@prosekit/pm/state'
-import type { EditorView } from '@prosekit/pm/view'
+} from 'prosekit/pm/state'
+import type { EditorView } from 'prosekit/pm/view'
 
 export type MarkApplyMode = 'replace' | 'merge'
 
@@ -469,7 +469,7 @@ function applySampleToTransaction(
   let changed = false
 
   const hasMissingWrapperType = sample.wrappers?.some(
-    (wrapper) => !state.schema.nodes[wrapper.type],
+    (wrapper) => !Object.hasOwn(state.schema.nodes, wrapper.type),
   )
   if (hasMissingWrapperType) {
     applyWrapperSample(tr, state, sample.wrappers || [], options)
@@ -500,7 +500,7 @@ function applyWrapperSample(
   for (const range of ranges) {
     const originalPos = range.pos
     const unsupportedWrapper = wrappers.find(
-      (wrapper) => !state.schema.nodes[wrapper.type],
+      (wrapper) => !Object.hasOwn(state.schema.nodes, wrapper.type),
     )
     if (unsupportedWrapper) {
       options.onUnsupportedStyle?.(wrapperToUnsupportedStyle(unsupportedWrapper), {

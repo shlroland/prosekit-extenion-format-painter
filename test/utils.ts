@@ -1,5 +1,5 @@
-import type { EditorView } from '@prosekit/pm/view'
 import { formatHTML } from 'diffable-html-snapshot'
+import type { EditorView } from 'prosekit/pm/view'
 
 async function readBlobFromClipboard(
   mimeType: string,

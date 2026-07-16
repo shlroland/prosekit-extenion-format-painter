@@ -19,13 +19,13 @@ pnpm add prosekit-extension-format-painter
 ```ts
 import 'prosekit-extension-format-painter/style.css'
 
-import { defineBasicExtension } from '@prosekit/basic'
-import { union } from '@prosekit/core'
 import {
   blockFormatPainterOptions,
   createFormatPainter,
   defaultFormatPainterOptions,
 } from 'prosekit-extension-format-painter'
+import { defineBasicExtension } from 'prosekit/basic'
+import { union } from 'prosekit/core'
 
 const formatPainter = createFormatPainter(defaultFormatPainterOptions)
 

@@ -1,11 +1,6 @@
 import '../src/style.css'
 import './style.css'
 
-import { defineBasicExtension } from '@prosekit/basic'
-import { createEditor, union } from '@prosekit/core'
-import { defineTextAlign } from '@prosekit/extensions/text-align'
-import { setBlockType, toggleMark } from '@prosekit/pm/commands'
-import type { EditorView } from '@prosekit/pm/view'
 import {
   AlignCenter,
   AlignLeft,
@@ -16,7 +11,17 @@ import {
   PaintbrushVertical,
   Pilcrow,
 } from 'lucide-react'
-import { StrictMode, useEffect, useRef, useState } from 'react'
+import { defineBasicExtension } from 'prosekit/basic'
+import { createEditor, union } from 'prosekit/core'
+import { defineTextAlign } from 'prosekit/extensions/text-align'
+import { setBlockType, toggleMark } from 'prosekit/pm/commands'
+import type { EditorView } from 'prosekit/pm/view'
+import {
+  StrictMode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { createRoot } from 'react-dom/client'
 
 import {

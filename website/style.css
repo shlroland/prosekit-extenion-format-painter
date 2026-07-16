@@ -1,5 +1,5 @@
-@import '@prosekit/basic/style.css';
-@import '@prosekit/basic/typography.css';
+@import 'prosekit/basic/style.css';
+@import 'prosekit/basic/typography.css';
 
 :root {
   --background: #f7f7f5;
