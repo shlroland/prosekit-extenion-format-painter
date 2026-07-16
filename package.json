@@ -6,12 +6,12 @@
   "description": "A headless ProseKit extension for format painter interactions",
   "author": "shlroland",
   "license": "MIT",
-  "homepage": "https://github.com/shlroland/prosekit-extenion-format-painter#readme",
+  "homepage": "https://github.com/shlroland/prosekit-extension-format-painter#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shlroland/prosekit-extenion-format-painter.git"
+    "url": "git+https://github.com/shlroland/prosekit-extension-format-painter.git"
   },
-  "bugs": "https://github.com/shlroland/prosekit-extenion-format-painter/issues",
+  "bugs": "https://github.com/shlroland/prosekit-extension-format-painter/issues",
   "keywords": [
     "prosekit",
     "prosemirror",
